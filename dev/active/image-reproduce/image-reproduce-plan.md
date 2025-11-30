@@ -4,7 +4,7 @@
 
 ## Executive Summary
 
-构建一个图像复现测试工具，用于评估VLM（视觉语言模型）和图像生成模型的能力。核心流程：用户上传图片 -> VLM分析生成描述 -> 生图模型根据描述复现图片。
+构建一个图像复现测试工具，用于评估MLLM（视觉语言模型）和图像生成模型的能力。核心流程：用户上传图片 -> MLLM分析生成描述 -> 生图模型根据描述复现图片。
 
 ## Current State Analysis
 
@@ -21,8 +21,8 @@ image-reproduce/
 ├── pyproject.toml              # uv 项目配置
 ├── main.py                     # FastAPI 应用入口
 ├── prompts/                    # Prompt 模板目录
-│   ├── vlm_system.md           # VLM 系统提示模板
-│   └── vlm_user.md             # VLM 用户提示模板
+│   ├── mllm_system.md           # MLLM 系统提示模板
+│   └── mllm_user.md             # MLLM 用户提示模板
 ├── static/
 │   └── index.html              # 前端单页应用
 ├── dev/
@@ -46,7 +46,7 @@ image-reproduce/
 
 | 用途 | 模型 |
 |------|------|
-| VLM (图像分析) | `google/gemini-3-pro-preview` |
+| MLLM (图像分析) | `google/gemini-3-pro-preview` |
 | 图像生成 | `google/gemini-3-pro-image-preview` |
 
 ## Implementation Phases
@@ -59,14 +59,14 @@ image-reproduce/
 
 ### Phase 2: Prompt 模板
 
-1. 创建 VLM 系统提示模板 (prompts/vlm_system.md)
-2. 创建 VLM 用户提示模板 (prompts/vlm_user.md)
+1. 创建 MLLM 系统提示模板 (prompts/mllm_system.md)
+2. 创建 MLLM 用户提示模板 (prompts/mllm_user.md)
 
 ### Phase 3: 后端开发
 
 1. 实现 FastAPI 应用基础结构
 2. 实现 Prompt 模板加载逻辑
-3. 实现 `/api/analyze` 端点 (VLM 分析，SSE 流式)
+3. 实现 `/api/analyze` 端点 (MLLM 分析，SSE 流式)
 4. 实现 `/api/generate` 端点 (图像生成)
 5. 实现静态文件服务
 
@@ -74,10 +74,10 @@ image-reproduce/
 
 1. 创建基础 HTML 结构和样式
 2. 实现图片上传/粘贴功能
-3. 实现 VLM 配置和调用
+3. 实现 MLLM 配置和调用
 4. 实现流式响应显示
 5. 实现生图配置和调用
-6. 实现左右联动（VLM输出同步到生图Prompt）
+6. 实现左右联动（MLLM输出同步到生图Prompt）
 
 ### Phase 5: 测试和优化
 
@@ -102,7 +102,7 @@ image-reproduce/
 ```
 
 ### `POST /api/analyze`
-调用 VLM 分析图片，流式返回结果
+调用 MLLM 分析图片，流式返回结果
 
 **Request:**
 ```json
@@ -141,7 +141,7 @@ image-reproduce/
 |     图片上传/粘贴区        |     生图模型选择           |
 |     [拖拽/点击/Ctrl+V]    |     [下拉框]               |
 +---------------------------+---------------------------+
-|     VLM模型选择           |                           |
+|     MLLM模型选择           |                           |
 |     [下拉框]              |     图像Prompt编辑框       |
 +---------------------------+     (从左侧自动同步)        |
 |     System Prompt         |     [可编辑文本框]         |
@@ -153,7 +153,7 @@ image-reproduce/
 |     [分析按钮]            |                           |
 +---------------------------+     生成图片展示区         |
 |                           |     [图片显示/下载]        |
-|     VLM响应输出           |                           |
+|     MLLM响应输出           |                           |
 |     (流式显示)            |                           |
 +---------------------------+---------------------------+
 ```
@@ -169,10 +169,10 @@ image-reproduce/
 ## Success Metrics
 
 1. 成功上传图片并显示预览
-2. VLM 能流式返回图像分析结果
+2. MLLM 能流式返回图像分析结果
 3. 分析结果自动同步到生图 Prompt
 4. 生图模型成功返回并显示生成的图片
-5. 整体响应时间可接受 (<30s for VLM, <60s for image gen)
+5. 整体响应时间可接受 (<30s for MLLM, <60s for image gen)
 
 ## Required Resources
 

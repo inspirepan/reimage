@@ -23,14 +23,14 @@
 
 ## Phase 2: Prompt 模板
 
-- [x] **T2.1** 创建 VLM 系统提示模板
+- [x] **T2.1** 创建 MLLM 系统提示模板
   - Effort: S
-  - File: prompts/vlm_system.md
+  - File: prompts/mllm_system.md
   - Acceptance: 包含清晰的图像分析指导
 
-- [x] **T2.2** 创建 VLM 用户提示模板
+- [x] **T2.2** 创建 MLLM 用户提示模板
   - Effort: S
-  - File: prompts/vlm_user.md
+  - File: prompts/mllm_user.md
   - Acceptance: 包含图像复现的具体要求
 
 ## Phase 3: 后端开发
@@ -50,7 +50,7 @@
   - Dependencies: T3.1
   - Acceptance: 
     - 接收图片和配置
-    - 调用 OpenRouter VLM API
+    - 调用 OpenRouter MLLM API
     - SSE 流式返回响应
 
 - [x] **T3.4** 实现 /api/generate 端点
@@ -77,18 +77,18 @@
     - 支持 Ctrl+V 粘贴
     - 显示图片预览
 
-- [x] **T4.3** 实现 VLM 调用和流式显示
+- [x] **T4.3** 实现 MLLM 调用和流式显示
   - Effort: M
   - Dependencies: T4.1, T3.3
   - Acceptance:
     - 可编辑 System/User Prompt
     - 点击分析按钮调用 API
-    - 流式显示 VLM 响应
+    - 流式显示 MLLM 响应
 
 - [x] **T4.4** 实现 Prompt 同步
   - Effort: S
   - Dependencies: T4.3
-  - Acceptance: VLM 输出实时同步到右侧生图 Prompt 框
+  - Acceptance: MLLM 输出实时同步到右侧生图 Prompt 框
 
 - [x] **T4.5** 实现生图调用和显示
   - Effort: M

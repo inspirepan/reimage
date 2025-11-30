@@ -8,8 +8,8 @@
 |------|------|
 | `/Users/bytedance/code/image-reproduce/pyproject.toml` | uv 项目配置，依赖管理 |
 | `/Users/bytedance/code/image-reproduce/main.py` | FastAPI 应用主入口 |
-| `/Users/bytedance/code/image-reproduce/prompts/vlm_system.md` | VLM 系统提示模板 |
-| `/Users/bytedance/code/image-reproduce/prompts/vlm_user.md` | VLM 用户提示模板 |
+| `/Users/bytedance/code/image-reproduce/prompts/mllm_system.md` | MLLM 系统提示模板 |
+| `/Users/bytedance/code/image-reproduce/prompts/mllm_user.md` | MLLM 用户提示模板 |
 | `/Users/bytedance/code/image-reproduce/static/index.html` | 前端单页应用 |
 
 ## Environment Variables
@@ -25,14 +25,14 @@
 - **Base URL:** `https://openrouter.ai/api/v1`
 - **认证:** Bearer Token (使用 `OPENROUTER_API_KEY`)
 
-#### Chat Completions (VLM)
+#### Chat Completions (MLLM)
 ```
 POST /chat/completions
 Content-Type: application/json
 Authorization: Bearer $OPENROUTER_API_KEY
 ```
 
-支持的 VLM 模型:
+支持的 MLLM 模型:
 - `google/gemini-3-pro-preview` (默认)
 - `openai/gpt-4o`
 - `anthropic/claude-3.5-sonnet`
@@ -86,9 +86,9 @@ Authorization: Bearer $OPENROUTER_API_KEY
 - 避免文件上传的复杂性
 - OpenRouter API 接受 Base64 格式
 
-### 5. VLM 输出同步策略
+### 5. MLLM 输出同步策略
 
-**决定:** 等 VLM 完成后一次性同步到右侧生图 Prompt
+**决定:** 等 MLLM 完成后一次性同步到右侧生图 Prompt
 
 **理由:**
 - 避免用户编辑时被打断
@@ -124,7 +124,7 @@ Authorization: Bearer $OPENROUTER_API_KEY
 
 ## OpenRouter Request Format
 
-### VLM Request (with image)
+### MLLM Request (with image)
 ```json
 {
   "model": "google/gemini-2.5-pro-preview",
@@ -181,5 +181,5 @@ images = api_dict.get("images", [])
 
 - 生图使用 `extra_body={"modalities": ["image", "text"]}` 触发图像生成
 - 图片在响应的 `images` 字段中，格式为 `image_url` 类型
-- VLM 流式输出完成后一次性同步到生图 Prompt
+- MLLM 流式输出完成后一次性同步到生图 Prompt
 - API 调用失败时自动重试 3 次
