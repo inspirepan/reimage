@@ -2,6 +2,8 @@
 
 Evaluate image models via an Image → Text → Image pipeline.
 
+![Screenshot](assets/screenshot.png)
+
 ## How It Works
 
 1. **Upload** - Drop or paste an image
