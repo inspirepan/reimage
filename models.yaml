@@ -1,8 +1,8 @@
 # Model configuration for ReImage tool
-# VLM models are used for image analysis
+# Multimodal LM models are used for image analysis
 # Generation models are used for image creation
 
-vlm_models:
+mllm_models:
 - id: google/gemini-3-pro-preview
   name: Gemini 3 Pro
 - id: anthropic/claude-opus-4.5

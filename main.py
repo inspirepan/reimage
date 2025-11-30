@@ -57,7 +57,7 @@ class ModelInfo(BaseModel):
 class ModelsResponse(BaseModel):
     """Response model for models endpoint."""
 
-    vlm_models: list[ModelInfo]
+    mllm_models: list[ModelInfo]
     generation_models: list[ModelInfo]
 
 
@@ -118,8 +118,8 @@ async def get_random_image() -> RandomImageResponse:
 async def get_prompts() -> PromptsResponse:
     """Return default prompt templates."""
     return PromptsResponse(
-        system_prompt=load_prompt("vlm_system"),
-        user_prompt=load_prompt("vlm_user"),
+        system_prompt=load_prompt("mllm_system"),
+        user_prompt=load_prompt("mllm_user"),
     )
 
 
@@ -128,13 +128,13 @@ async def get_models() -> ModelsResponse:
     """Return available model configurations."""
     config = load_models()
     return ModelsResponse(
-        vlm_models=[ModelInfo(**m) for m in config.get("vlm_models", [])],
+        mllm_models=[ModelInfo(**m) for m in config.get("mllm_models", [])],
         generation_models=[ModelInfo(**m) for m in config.get("generation_models", [])],
     )
 
 
-async def stream_vlm_response(request: AnalyzeRequest):
-    """Stream VLM response from OpenRouter using OpenAI SDK."""
+async def stream_mllm_response(request: AnalyzeRequest):
+    """Stream Multimodal LM response from OpenRouter using OpenAI SDK."""
     api_key = get_api_key()
 
     client = AsyncOpenAI(
@@ -172,9 +172,9 @@ async def stream_vlm_response(request: AnalyzeRequest):
 
 @app.post("/api/analyze")
 async def analyze_image(request: AnalyzeRequest) -> StreamingResponse:
-    """Analyze image using VLM and stream response."""
+    """Analyze image using Multimodal LM and stream response."""
     return StreamingResponse(
-        stream_vlm_response(request),
+        stream_mllm_response(request),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
