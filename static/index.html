@@ -5,15 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Image Reproduce Tool</title>
     <link
-      href="https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-mono/400.css"
+      href="https://cdn.jsdelivr.net/npm/@fontsource/jetbrains-mono/400.css"
       rel="stylesheet"
     />
     <link
-      href="https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-mono/500.css"
+      href="https://cdn.jsdelivr.net/npm/@fontsource/jetbrains-mono/500.css"
       rel="stylesheet"
     />
     <link
-      href="https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-mono/700.css"
+      href="https://cdn.jsdelivr.net/npm/@fontsource/jetbrains-mono/700.css"
       rel="stylesheet"
     />
     <style>
@@ -31,8 +31,8 @@
         --error: #dc2626;
         --bg-error: #ffebee;
         --bg-code: #f3f3f3;
-        --font-sans: "IBM Plex Mono", "SF Mono", Menlo, monospace;
-        --font-mono: "IBM Plex Mono", "SF Mono", Menlo, monospace;
+        --font-sans: "JetBrains Mono", "SF Mono", Menlo, monospace;
+        --font-mono: "JetBrains Mono", "SF Mono", Menlo, monospace;
         --font-weight-bold: 700;
         --font-size-xs: 13px;
         --font-size-sm: 14px;
@@ -90,14 +90,10 @@
       .main-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        grid-template-rows: 1fr 1fr;
+        grid-template-rows: 1fr;
         gap: 16px;
         flex: 1;
         min-height: 0;
-      }
-
-      .column:nth-child(1) {
-        grid-row: 1 / -1;
       }
 
       .column {
@@ -248,10 +244,11 @@
 
       #preview-image {
         max-width: 100%;
-        max-height: 200px;
+        max-height: 50vh;
         display: none;
         border-radius: 4px;
         border: 1px solid var(--border);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
       }
 
       #upload-placeholder {
@@ -540,22 +537,22 @@
           </div>
 
           <!-- Prompts -->
-          <div class="section flex-grow">
+          <div class="section">
             <label>Prompt Configuration</label>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex: 1; min-height: 0;">
-              <div style="display: flex; flex-direction: column; min-height: 0;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <div style="display: flex; flex-direction: column;">
                 <label style="font-size: var(--font-size-xs); margin-bottom: 4px;">System Prompt</label>
                 <textarea
                   id="system-prompt"
-                  style="font-size: var(--font-size-xs); flex: 1;"
+                  style="font-size: var(--font-size-xs); width: 100%; min-height: 300px; resize: vertical;"
                   placeholder="Loading system prompt..."
                 ></textarea>
               </div>
-              <div style="display: flex; flex-direction: column; min-height: 0;">
+              <div style="display: flex; flex-direction: column;">
                 <label style="font-size: var(--font-size-xs); margin-bottom: 4px;">User Prompt</label>
                 <textarea
                   id="user-prompt"
-                  style="font-size: var(--font-size-xs); flex: 1;"
+                  style="font-size: var(--font-size-xs); width: 100%; min-height: 300px; resize: vertical;"
                   placeholder="Loading user prompt..."
                 ></textarea>
               </div>
@@ -568,12 +565,15 @@
       <div class="column">
         <div class="column-header">
           <span>2. Prompt Generation & Image Gen</span>
-          <button id="generate-btn" class="action-btn" disabled>
-            Generate Image
-          </button>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <button id="download-btn">Download</button>
+            <button id="generate-btn" class="action-btn" disabled>
+              Generate Image
+            </button>
+          </div>
         </div>
         <div class="column-content">
-          <div class="section flex-grow">
+          <div class="section">
             <div
               style="
                 display: flex;
@@ -591,6 +591,7 @@
             </div>
             <textarea
               id="image-prompt"
+              style="resize: vertical; min-height: 200px; height: 300px;"
               placeholder="Click 'Analyze' to generate prompt, or enter here directly..."
             ></textarea>
           </div>
@@ -601,24 +602,18 @@
               <option value="">Loading...</option>
             </select>
           </div>
-        </div>
-      </div>
 
-      <!-- Column 3: Result -->
-      <div class="column">
-        <div class="column-header">
-          <span>3. Results</span>
-          <button id="download-btn">Download</button>
-        </div>
-        <div class="column-content">
-          <div id="generated-image-container">
-            <div class="loader" id="gen-loader"></div>
-            <img id="generated-image" alt="Generated Image" />
-            <div
-              id="gen-placeholder"
-              style="text-align: center; color: var(--text-dim)"
-            >
-              <p>Waiting for generation...</p>
+          <div class="section">
+            <label>3. Results</label>
+            <div id="generated-image-container">
+              <div class="loader" id="gen-loader"></div>
+              <img id="generated-image" alt="Generated Image" />
+              <div
+                id="gen-placeholder"
+                style="text-align: center; color: var(--text-dim)"
+              >
+                <p>Waiting for generation...</p>
+              </div>
             </div>
           </div>
         </div>
@@ -921,11 +916,11 @@
 
           // Scroll to the result column (slide down)
           setTimeout(() => {
-            const resultColumn = document.querySelector(
-              ".main-grid .column:last-child"
+            const generatedImageContainer = document.getElementById(
+              "generated-image-container"
             );
-            if (resultColumn) {
-              resultColumn.scrollIntoView({
+            if (generatedImageContainer) {
+              generatedImageContainer.scrollIntoView({
                 behavior: "smooth",
                 block: "start",
               });

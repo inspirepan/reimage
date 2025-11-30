@@ -104,7 +104,7 @@ async def get_random_image() -> RandomImageResponse:
             # Fetch from Picsum (redirects to a specific image)
             resp = await client.get("https://picsum.photos/800/600", follow_redirects=True)
             resp.raise_for_status()
-            
+
             # Convert to base64
             b64_img = base64.b64encode(resp.content).decode("utf-8")
             mime_type = resp.headers.get("content-type", "image/jpeg")
