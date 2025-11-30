@@ -1,13 +1,15 @@
 """FastAPI application for image reproduction testing."""
 
+import json
 import os
 from pathlib import Path
 from typing import Any
 
-import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from openai import AsyncOpenAI
+from openai.types.chat import ChatCompletionMessageParam
 from pydantic import BaseModel
 
 app = FastAPI(title="Image Reproduce Tool")
@@ -72,10 +74,16 @@ async def get_prompts() -> PromptsResponse:
 
 
 async def stream_vlm_response(request: AnalyzeRequest):
-    """Stream VLM response from OpenRouter."""
+    """Stream VLM response from OpenRouter using OpenAI SDK."""
     api_key = get_api_key()
 
-    messages: list[dict[str, Any]] = [
+    client = AsyncOpenAI(
+        api_key=api_key,
+        base_url=OPENROUTER_BASE_URL,
+        timeout=120.0,
+    )
+
+    messages: list[ChatCompletionMessageParam] = [
         {"role": "system", "content": request.system_prompt},
         {
             "role": "user",
@@ -86,30 +94,20 @@ async def stream_vlm_response(request: AnalyzeRequest):
         },
     ]
 
-    payload = {
-        "model": request.model,
-        "stream": True,
-        "messages": messages,
-    }
+    try:
+        stream = await client.chat.completions.create(
+            model=request.model,
+            messages=messages,
+            stream=True,
+        )
 
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        async with client.stream(
-            "POST",
-            f"{OPENROUTER_BASE_URL}/chat/completions",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            json=payload,
-        ) as response:
-            if response.status_code != 200:
-                error_text = await response.aread()
-                yield f"data: {{'error': '{error_text.decode()}'}}\n\n"
-                return
+        async for chunk in stream:
+            chunk_data = chunk.model_dump()
+            yield f"data: {json.dumps(chunk_data)}\n\n"
 
-            async for line in response.aiter_lines():
-                if line.startswith("data: "):
-                    yield f"{line}\n\n"
+        yield "data: [DONE]\n\n"
+    except Exception as e:
+        yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
 
 @app.post("/api/analyze")
@@ -125,65 +123,71 @@ async def analyze_image(request: AnalyzeRequest) -> StreamingResponse:
     )
 
 
+def extract_image_from_response(data: dict[str, Any]) -> str | None:
+    """Extract image URL from OpenRouter response."""
+    message = data.get("choices", [{}])[0].get("message", {})
+
+    # Check for images in the response (Gemini format)
+    images = message.get("images", [])
+    if images:
+        sorted_images = sorted(images, key=lambda x: x.get("index", 0))
+        for img in sorted_images:
+            if img.get("type") == "image_url":
+                image_url = img.get("image_url", {}).get("url", "")
+                if image_url:
+                    return image_url
+
+    # Fallback: check content for image_url type
+    content = message.get("content", "")
+    if isinstance(content, list):
+        for item in content:
+            if item.get("type") == "image_url":
+                image_url = item.get("image_url", {}).get("url", "")
+                if image_url:
+                    return image_url
+
+    return None
+
+
 @app.post("/api/generate", response_model=GenerateResponse)
 async def generate_image(request: GenerateRequest) -> GenerateResponse:
     """Generate image using OpenRouter image generation model."""
     api_key = get_api_key()
 
-    payload = {
-        "model": request.model,
-        "messages": [{"role": "user", "content": request.prompt}],
-        "modalities": ["image", "text"],
-    }
+    client = AsyncOpenAI(
+        api_key=api_key,
+        base_url=OPENROUTER_BASE_URL,
+        timeout=120.0,
+    )
 
     max_retries = 3
     last_error = None
 
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        for attempt in range(max_retries):
-            try:
-                response = await client.post(
-                    f"{OPENROUTER_BASE_URL}/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {api_key}",
-                        "Content-Type": "application/json",
-                    },
-                    json=payload,
-                )
+    for attempt in range(max_retries):
+        try:
+            response = await client.chat.completions.create(
+                model=request.model,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": "Please generate an image based on the following prompt: " + request.prompt,
+                    }
+                ],
+                extra_body={"modalities": ["image", "text"]},
+            )
 
-                if response.status_code != 200:
-                    last_error = f"API error: {response.status_code} - {response.text}"
-                    continue
+            data = response.model_dump()
+            image_url = extract_image_from_response(data)
+            if image_url:
+                return GenerateResponse(image=image_url)
 
-                data = response.json()
-                message = data.get("choices", [{}])[0].get("message", {})
+            last_error = "No image found in response"
+            continue
 
-                # Check for images in the response (Gemini format)
-                images = message.get("images", [])
-                if images:
-                    # Sort by index and get the first image
-                    sorted_images = sorted(images, key=lambda x: x.get("index", 0))
-                    for img in sorted_images:
-                        if img.get("type") == "image_url":
-                            image_url = img.get("image_url", {}).get("url", "")
-                            if image_url:
-                                return GenerateResponse(image=image_url)
-
-                # Fallback: check content for image_url type
-                content = message.get("content", "")
-                if isinstance(content, list):
-                    for item in content:
-                        if item.get("type") == "image_url":
-                            image_url = item.get("image_url", {}).get("url", "")
-                            if image_url:
-                                return GenerateResponse(image=image_url)
-
-                last_error = "No image found in response"
-
-            except httpx.TimeoutException:
-                last_error = "Request timeout"
-            except Exception as e:
-                last_error = str(e)
+        except TimeoutError:
+            last_error = "Request timeout"
+        except Exception as e:
+            last_error = str(e)
 
     raise HTTPException(status_code=500, detail=f"Failed to generate image: {last_error}")
 

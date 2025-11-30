@@ -1,540 +1,621 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Image Reproduce Tool</title>
     <style>
-        :root {
-            --primary-color: #2563eb;
-            --primary-hover: #1d4ed8;
-            --bg-color: #f1f5f9;
-            --card-bg: #ffffff;
-            --border-color: #e2e8f0;
-            --text-primary: #1e293b;
-            --text-secondary: #64748b;
-            --radius: 12px;
-        }
+      :root {
+        --primary-color: #2563eb;
+        --primary-hover: #1d4ed8;
+        --bg-color: #f1f5f9;
+        --card-bg: #ffffff;
+        --border-color: #e2e8f0;
+        --text-primary: #1e293b;
+        --text-secondary: #64748b;
+        --radius: 12px;
+      }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            margin: 0;
-            padding: 16px;
-            background-color: var(--bg-color);
-            height: 100vh;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            color: var(--text-primary);
-        }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        margin: 0;
+        padding: 16px;
+        background-color: var(--bg-color);
+        height: 100vh;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        color: var(--text-primary);
+      }
 
-        h1 {
-            margin: 0 0 16px 0;
-            font-size: 1.25rem;
-            color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+      h1 {
+        margin: 0 0 16px 0;
+        font-size: 1.25rem;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
 
-        .main-grid {
-            display: grid;
-            grid-template-columns: 320px 1fr 1fr; /* 3 Columns: Fixed Sidebar, 2 Flexible */
-            gap: 16px;
-            flex: 1;
-            min-height: 0; /* Critical for nested scrolling */
-        }
+      .main-grid {
+        display: grid;
+        grid-template-columns: 320px 1fr 1fr; /* 3 Columns: Fixed Sidebar, 2 Flexible */
+        gap: 16px;
+        flex: 1;
+        min-height: 0; /* Critical for nested scrolling */
+      }
 
-        .column {
-            background: var(--card-bg);
-            border-radius: var(--radius);
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            border: 1px solid var(--border-color);
-        }
+      .column {
+        background: var(--card-bg);
+        border-radius: var(--radius);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        border: 1px solid var(--border-color);
+      }
 
-        .column-header {
-            padding: 12px 16px;
-            border-bottom: 1px solid var(--border-color);
-            font-weight: 600;
-            font-size: 0.95rem;
-            color: var(--text-primary);
-            background: #f8fafc;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-shrink: 0;
-        }
+      .column-header {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border-color);
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: var(--text-primary);
+        background: #f8fafc;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-shrink: 0;
+      }
 
-        .column-content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
+      .column-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
 
-        .section {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
+      .section {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
 
-        label {
-            font-weight: 500;
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-        }
+      label {
+        font-weight: 500;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+      }
 
-        select, input, textarea, button {
-            font-family: inherit;
-            padding: 10px;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            font-size: 0.9rem;
-            background: #fff;
-        }
+      select,
+      input,
+      textarea,
+      button {
+        font-family: inherit;
+        padding: 10px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 0.9rem;
+        background: #fff;
+      }
 
-        select:focus, input:focus, textarea:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
-        }
+      select:focus,
+      input:focus,
+      textarea:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+      }
 
-        textarea {
-            resize: none;
-            /* Textareas in flex containers will grow */
-        }
+      textarea {
+        resize: none;
+        /* Textareas in flex containers will grow */
+      }
 
-        /* Buttons */
-        .action-btn {
-            cursor: pointer;
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            font-weight: 600;
-            padding: 12px;
-            border-radius: 8px;
-            transition: background-color 0.2s;
-            margin-top: auto; /* Push to bottom if needed */
-        }
+      /* Buttons */
+      .action-btn {
+        cursor: pointer;
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        font-weight: 600;
+        padding: 12px;
+        border-radius: 8px;
+        transition: background-color 0.2s;
+        margin-top: auto; /* Push to bottom if needed */
+      }
 
-        .action-btn:hover {
-            background-color: var(--primary-hover);
-        }
+      .action-btn:hover {
+        background-color: var(--primary-hover);
+      }
 
-        .action-btn:disabled {
-            background-color: #cbd5e1;
-            cursor: not-allowed;
-        }
+      .action-btn:disabled {
+        background-color: #cbd5e1;
+        cursor: not-allowed;
+      }
 
-        /* Upload Area */
-        #upload-area {
-            border: 2px dashed var(--border-color);
-            border-radius: 8px;
-            padding: 16px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 120px;
-            background-color: #fafafa;
-            position: relative;
-        }
+      /* Upload Area */
+      #upload-area {
+        border: 2px dashed var(--border-color);
+        border-radius: 8px;
+        padding: 16px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 120px;
+        background-color: #fafafa;
+        position: relative;
+      }
 
-        #upload-area:hover, #upload-area.dragover {
-            border-color: var(--primary-color);
-            background-color: #eff6ff;
-        }
+      #upload-area:hover,
+      #upload-area.dragover {
+        border-color: var(--primary-color);
+        background-color: #eff6ff;
+      }
 
-        #preview-image {
-            max-width: 100%;
-            max-height: 200px; /* Limit height to save space */
-            display: none;
-            border-radius: 4px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        #upload-placeholder {
-            color: var(--text-secondary);
-            font-size: 0.85rem;
-        }
+      #preview-image {
+        max-width: 100%;
+        max-height: 200px; /* Limit height to save space */
+        display: none;
+        border-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
 
-        /* Result Area */
-        #generated-image-container {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background-color: #f8fafc;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 16px;
-            overflow: hidden;
-            min-height: 200px;
-        }
+      #upload-placeholder {
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+      }
 
-        #generated-image {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-            display: none;
-            border-radius: 4px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
+      /* Result Area */
+      #generated-image-container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background-color: #f8fafc;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 16px;
+        overflow: hidden;
+        min-height: 200px;
+      }
 
-        .loader {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid var(--primary-color);
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            animation: spin 1s linear infinite;
-            display: none;
-        }
+      #generated-image {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        display: none;
+        border-radius: 4px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        /* Utility for expanding textareas */
-        .flex-grow {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-        .flex-grow textarea {
-            flex: 1;
-        }
+      .loader {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid var(--primary-color);
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        animation: spin 1s linear infinite;
+        display: none;
+      }
 
-        /* Details/Summary for Prompts to save space */
-        details {
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            overflow: hidden;
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
         }
-        summary {
-            padding: 8px 12px;
-            background: #f8fafc;
-            cursor: pointer;
-            font-size: 0.85rem;
-            font-weight: 500;
-            user-select: none;
+        100% {
+          transform: rotate(360deg);
         }
-        details textarea {
-            border: none;
-            border-top: 1px solid var(--border-color);
-            border-radius: 0;
-            width: 100%;
-            box-sizing: border-box;
-            display: block;
-        }
+      }
+
+      /* Utility for expanding textareas */
+      .flex-grow {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+      .flex-grow textarea {
+        flex: 1;
+      }
+
+      /* Details/Summary for Prompts to save space */
+      details {
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      summary {
+        padding: 8px 12px;
+        background: #f8fafc;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 500;
+        user-select: none;
+      }
+      details textarea {
+        border: none;
+        border-top: 1px solid var(--border-color);
+        border-radius: 0;
+        width: 100%;
+        box-sizing: border-box;
+        display: block;
+      }
     </style>
-</head>
-<body>
-    <h1>Image Reproduce Tool 
-        <span style="font-size: 0.8em; font-weight: normal; color: #64748b;">| 图像复现工作台</span>
+  </head>
+  <body>
+    <h1>
+      Image Reproduce Tool
+      <span style="font-size: 0.8em; font-weight: normal; color: #64748b"
+        >| 图像复现工作台</span
+      >
     </h1>
-    
+
     <div class="main-grid">
-        <!-- Column 1: Input Source & Config -->
-        <div class="column">
-            <div class="column-header">
-                <span>1. 图像源与配置</span>
-            </div>
-            <div class="column-content">
-                <!-- Image Upload -->
-                <div class="section">
-                    <label>原始图像</label>
-                    <input type="file" id="upload-input" accept="image/*" style="display: none;">
-                    <div id="upload-area">
-                        <div id="upload-placeholder">
-                            <svg style="width:24px;height:24px;margin:0 auto 8px;display:block;opacity:0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                            点击或拖拽上传
-                        </div>
-                        <img id="preview-image" alt="Preview">
-                    </div>
-                </div>
-
-                <!-- VLM Config -->
-                <div class="section">
-                    <label for="vlm-model-select">分析模型 (VLM)</label>
-                    <select id="vlm-model-select" style="width: 100%">
-                        <option value="google/gemini-3-pro-preview">Gemini 3 Pro</option>
-                        <option value="anthropic/claude-opus-4.5">Claude Opus 4.5</option>
-                    </select>
-                </div>
-
-                <!-- Prompts (Collapsible to save space) -->
-                <div class="section">
-                    <label>提示词配置</label>
-                    <details open>
-                        <summary>System Prompt</summary>
-                        <textarea id="system-prompt" rows="4" placeholder="Loading system prompt..."></textarea>
-                    </details>
-                    <div style="height: 8px;"></div>
-                    <details>
-                        <summary>User Prompt</summary>
-                        <textarea id="user-prompt" rows="4" placeholder="Loading user prompt..."></textarea>
-                    </details>
-                </div>
-
-                <button id="analyze-btn" class="action-btn" disabled>开始分析 (Analyze)</button>
-            </div>
+      <!-- Column 1: Input Source & Config -->
+      <div class="column">
+        <div class="column-header">
+          <span>1. 图像源与配置</span>
         </div>
-
-        <!-- Column 2: Prompt Engineering -->
-        <div class="column">
-            <div class="column-header">
-                <span>2. 提示词生成与生图</span>
+        <div class="column-content">
+          <!-- Image Upload -->
+          <div class="section">
+            <label>原始图像</label>
+            <input
+              type="file"
+              id="upload-input"
+              accept="image/*"
+              style="display: none"
+            />
+            <div id="upload-area">
+              <div id="upload-placeholder">
+                <svg
+                  style="
+                    width: 24px;
+                    height: 24px;
+                    margin: 0 auto 8px;
+                    display: block;
+                    opacity: 0.5;
+                  "
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  ></path>
+                </svg>
+                点击或拖拽上传
+              </div>
+              <img id="preview-image" alt="Preview" />
             </div>
-            <div class="column-content">
-                <div class="section flex-grow">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <label for="image-prompt">生成的生图提示词 (Editable)</label>
-                        <span id="vlm-status" style="font-size: 0.8rem; color: var(--primary-color);"></span>
-                    </div>
-                    <textarea id="image-prompt" placeholder="点击'开始分析'生成提示词，或在此直接输入..."></textarea>
-                </div>
+          </div>
 
-                <div class="section">
-                    <label for="gen-model-select">生图模型 (Generation Model)</label>
-                    <select id="gen-model-select" style="width: 100%">
-                        <option value="google/gemini-3-pro-image-preview">nano banana pro</option>
-                        <option value="black-forest-labs/flux.2-flex">flux.2-flex</option>
-                        <option value="google/gemini-2.5-flash-image">nano banana</option>
-                    </select>
-                </div>
+          <!-- VLM Config -->
+          <div class="section">
+            <label for="vlm-model-select">分析模型 (VLM)</label>
+            <select id="vlm-model-select" style="width: 100%">
+              <option value="google/gemini-3-pro-preview">Gemini 3 Pro</option>
+              <option value="anthropic/claude-opus-4.5">Claude Opus 4.5</option>
+            </select>
+          </div>
 
-                <button id="generate-btn" class="action-btn" disabled>生成图片 (Generate)</button>
-            </div>
+          <!-- Prompts (Collapsible to save space) -->
+          <div class="section">
+            <label>提示词配置</label>
+            <details open>
+              <summary>System Prompt</summary>
+              <textarea
+                id="system-prompt"
+                rows="4"
+                placeholder="Loading system prompt..."
+              ></textarea>
+            </details>
+            <div style="height: 8px"></div>
+            <details>
+              <summary>User Prompt</summary>
+              <textarea
+                id="user-prompt"
+                rows="4"
+                placeholder="Loading user prompt..."
+              ></textarea>
+            </details>
+          </div>
+
+          <button id="analyze-btn" class="action-btn" disabled>
+            开始分析 (Analyze)
+          </button>
         </div>
+      </div>
 
-        <!-- Column 3: Result -->
-        <div class="column">
-            <div class="column-header">
-                <span>3. 结果展示</span>
-                <button id="download-btn" style="padding: 4px 8px; font-size: 0.8rem; cursor: pointer; border: 1px solid #ddd; background: white; border-radius: 4px; display: none;">下载</button>
-            </div>
-            <div class="column-content">
-                <div id="generated-image-container">
-                    <div class="loader" id="gen-loader"></div>
-                    <img id="generated-image" alt="Generated Image">
-                    <div id="gen-placeholder" style="text-align: center; color: var(--text-secondary);">
-                        <p>等待生成...</p>
-                    </div>
-                </div>
-            </div>
+      <!-- Column 2: Prompt Engineering -->
+      <div class="column">
+        <div class="column-header">
+          <span>2. 提示词生成与生图</span>
         </div>
+        <div class="column-content">
+          <div class="section flex-grow">
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+              "
+            >
+              <label for="image-prompt">生成的生图提示词 (Editable)</label>
+              <span
+                id="vlm-status"
+                style="font-size: 0.8rem; color: var(--primary-color)"
+              ></span>
+            </div>
+            <textarea
+              id="image-prompt"
+              placeholder="点击'开始分析'生成提示词，或在此直接输入..."
+            ></textarea>
+          </div>
+
+          <div class="section">
+            <label for="gen-model-select">生图模型 (Generation Model)</label>
+            <select id="gen-model-select" style="width: 100%">
+              <option value="google/gemini-3-pro-image-preview">
+                Nano Banana Pro
+              </option>
+              <option value="black-forest-labs/flux.2-flex">flux.2-flex</option>
+              <option value="google/gemini-2.5-flash-image">Nano Banana</option>
+            </select>
+          </div>
+
+          <button id="generate-btn" class="action-btn" disabled>
+            生成图片 (Generate)
+          </button>
+        </div>
+      </div>
+
+      <!-- Column 3: Result -->
+      <div class="column">
+        <div class="column-header">
+          <span>3. 结果展示</span>
+          <button
+            id="download-btn"
+            style="
+              padding: 4px 8px;
+              font-size: 0.8rem;
+              cursor: pointer;
+              border: 1px solid #ddd;
+              background: white;
+              border-radius: 4px;
+              display: none;
+            "
+          >
+            下载
+          </button>
+        </div>
+        <div class="column-content">
+          <div id="generated-image-container">
+            <div class="loader" id="gen-loader"></div>
+            <img id="generated-image" alt="Generated Image" />
+            <div
+              id="gen-placeholder"
+              style="text-align: center; color: var(--text-secondary)"
+            >
+              <p>等待生成...</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', async () => {
-            await loadPrompts();
-        });
+      document.addEventListener("DOMContentLoaded", async () => {
+        await loadPrompts();
+      });
 
-        const uploadArea = document.getElementById('upload-area');
-        const uploadInput = document.getElementById('upload-input');
-        const previewImage = document.getElementById('preview-image');
-        const uploadPlaceholder = document.getElementById('upload-placeholder');
-        const analyzeBtn = document.getElementById('analyze-btn');
-        // Removed vlmOutput div logic, we write directly to imagePrompt
-        const imagePrompt = document.getElementById('image-prompt');
-        const generateBtn = document.getElementById('generate-btn');
-        const genLoader = document.getElementById('gen-loader');
-        const generatedImage = document.getElementById('generated-image');
-        const genPlaceholder = document.getElementById('gen-placeholder');
-        const systemPromptInput = document.getElementById('system-prompt');
-        const userPromptInput = document.getElementById('user-prompt');
-        const vlmStatus = document.getElementById('vlm-status');
-        const downloadBtn = document.getElementById('download-btn');
+      const uploadArea = document.getElementById("upload-area");
+      const uploadInput = document.getElementById("upload-input");
+      const previewImage = document.getElementById("preview-image");
+      const uploadPlaceholder = document.getElementById("upload-placeholder");
+      const analyzeBtn = document.getElementById("analyze-btn");
+      // Removed vlmOutput div logic, we write directly to imagePrompt
+      const imagePrompt = document.getElementById("image-prompt");
+      const generateBtn = document.getElementById("generate-btn");
+      const genLoader = document.getElementById("gen-loader");
+      const generatedImage = document.getElementById("generated-image");
+      const genPlaceholder = document.getElementById("gen-placeholder");
+      const systemPromptInput = document.getElementById("system-prompt");
+      const userPromptInput = document.getElementById("user-prompt");
+      const vlmStatus = document.getElementById("vlm-status");
+      const downloadBtn = document.getElementById("download-btn");
 
-        let currentBase64Image = null;
+      let currentBase64Image = null;
 
-        async function loadPrompts() {
-            try {
-                const res = await fetch('/api/prompts');
-                if (res.ok) {
-                    const data = await res.json();
-                    systemPromptInput.value = data.system_prompt;
-                    userPromptInput.value = data.user_prompt;
-                }
-            } catch (e) {
-                console.error("Failed to load prompts", e);
-            }
+      async function loadPrompts() {
+        try {
+          const res = await fetch("/api/prompts");
+          if (res.ok) {
+            const data = await res.json();
+            systemPromptInput.value = data.system_prompt;
+            userPromptInput.value = data.user_prompt;
+          }
+        } catch (e) {
+          console.error("Failed to load prompts", e);
         }
+      }
 
-        // --- Image Upload Logic ---
-        function handleFile(file) {
-            if (!file || !file.type.startsWith('image/')) {
-                alert('请上传图片文件');
-                return;
-            }
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                currentBase64Image = e.target.result;
-                previewImage.src = currentBase64Image;
-                previewImage.style.display = 'block';
-                uploadPlaceholder.style.display = 'none';
-                analyzeBtn.disabled = false;
-            };
-            reader.readAsDataURL(file);
+      // --- Image Upload Logic ---
+      function handleFile(file) {
+        if (!file || !file.type.startsWith("image/")) {
+          alert("请上传图片文件");
+          return;
         }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          currentBase64Image = e.target.result;
+          previewImage.src = currentBase64Image;
+          previewImage.style.display = "block";
+          uploadPlaceholder.style.display = "none";
+          analyzeBtn.disabled = false;
+        };
+        reader.readAsDataURL(file);
+      }
 
-        uploadArea.addEventListener('click', () => uploadInput.click());
-        uploadInput.addEventListener('change', (e) => {
-            if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
-        });
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
-        uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
-        });
-        document.addEventListener('paste', (e) => {
-            const items = e.clipboardData.items;
-            for (let i = 0; i < items.length; i++) {
-                if (items[i].type.indexOf('image') !== -1) {
-                    handleFile(items[i].getAsFile());
-                    break;
-                }
-            }
-        });
+      uploadArea.addEventListener("click", () => uploadInput.click());
+      uploadInput.addEventListener("change", (e) => {
+        if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
+      });
+      uploadArea.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        uploadArea.classList.add("dragover");
+      });
+      uploadArea.addEventListener("dragleave", () =>
+        uploadArea.classList.remove("dragover")
+      );
+      uploadArea.addEventListener("drop", (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove("dragover");
+        if (e.dataTransfer.files && e.dataTransfer.files[0])
+          handleFile(e.dataTransfer.files[0]);
+      });
+      document.addEventListener("paste", (e) => {
+        const items = e.clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.indexOf("image") !== -1) {
+            handleFile(items[i].getAsFile());
+            break;
+          }
+        }
+      });
 
-        // --- VLM Analysis Logic (Streaming) ---
-        analyzeBtn.addEventListener('click', async () => {
-            if (!currentBase64Image) return;
+      // --- VLM Analysis Logic (Streaming) ---
+      analyzeBtn.addEventListener("click", async () => {
+        if (!currentBase64Image) return;
 
-            analyzeBtn.disabled = true;
-            analyzeBtn.textContent = "分析中...";
-            imagePrompt.value = ''; // Clear
-            vlmStatus.textContent = '正在接收流式输出...';
+        analyzeBtn.disabled = true;
+        analyzeBtn.textContent = "分析中...";
+        imagePrompt.value = ""; // Clear
+        vlmStatus.textContent = "正在接收流式输出...";
 
-            const payload = {
-                image: currentBase64Image,
-                model: document.getElementById('vlm-model-select').value,
-                system_prompt: systemPromptInput.value,
-                user_prompt: userPromptInput.value
-            };
+        const payload = {
+          image: currentBase64Image,
+          model: document.getElementById("vlm-model-select").value,
+          system_prompt: systemPromptInput.value,
+          user_prompt: userPromptInput.value,
+        };
 
-            try {
-                const response = await fetch('/api/analyze', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+        try {
+          const response = await fetch("/api/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
 
-                if (!response.ok) throw new Error(response.statusText);
+          if (!response.ok) throw new Error(response.statusText);
 
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                let buffer = '';
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
 
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-                    buffer += decoder.decode(value, { stream: true });
-                    const lines = buffer.split('\n');
-                    buffer = lines.pop(); 
-                    
-                    for (const line of lines) {
-                        if (line.startsWith('data: ')) {
-                            let content = line.slice(6);
-                            if (content.startsWith("{'error':")) {
-                                imagePrompt.value += "\nError: " + content;
-                            } else {
-                                try {
-                                    if (content.trim() === '[DONE]') continue;
-                                    const data = JSON.parse(content);
-                                    const text = data.choices?.[0]?.delta?.content || '';
-                                    if (text) {
-                                        imagePrompt.value += text;
-                                        imagePrompt.scrollTop = imagePrompt.scrollHeight;
-                                    }
-                                } catch (e) {
-                                    console.log("Stream parse error", e);
-                                }
-                            }
-                        }
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop();
+
+            for (const line of lines) {
+              if (line.startsWith("data: ")) {
+                let content = line.slice(6);
+                if (content.startsWith("{'error':")) {
+                  imagePrompt.value += "\nError: " + content;
+                } else {
+                  try {
+                    if (content.trim() === "[DONE]") continue;
+                    const data = JSON.parse(content);
+                    const text = data.choices?.[0]?.delta?.content || "";
+                    if (text) {
+                      imagePrompt.value += text;
+                      imagePrompt.scrollTop = imagePrompt.scrollHeight;
                     }
+                  } catch (e) {
+                    console.log("Stream parse error", e);
+                  }
                 }
-                generateBtn.disabled = false;
-                vlmStatus.textContent = '分析完成';
-            } catch (err) {
-                console.error(err);
-                imagePrompt.value += '\nError calling VLM API';
-                vlmStatus.textContent = 'Error';
-            } finally {
-                analyzeBtn.disabled = false;
-                analyzeBtn.textContent = "开始分析 (Analyze)";
+              }
             }
-        });
+          }
+          generateBtn.disabled = false;
+          vlmStatus.textContent = "分析完成";
+        } catch (err) {
+          console.error(err);
+          imagePrompt.value += "\nError calling VLM API";
+          vlmStatus.textContent = "Error";
+        } finally {
+          analyzeBtn.disabled = false;
+          analyzeBtn.textContent = "开始分析 (Analyze)";
+        }
+      });
 
-        // --- Image Generation Logic ---
-        generateBtn.addEventListener('click', async () => {
-            const prompt = imagePrompt.value.trim();
-            if (!prompt) return;
+      // --- Image Generation Logic ---
+      generateBtn.addEventListener("click", async () => {
+        const prompt = imagePrompt.value.trim();
+        if (!prompt) return;
 
-            generateBtn.disabled = true;
-            generateBtn.textContent = "生成中...";
-            genLoader.style.display = 'block';
-            generatedImage.style.display = 'none';
-            genPlaceholder.style.display = 'none';
+        generateBtn.disabled = true;
+        generateBtn.textContent = "生成中...";
+        genLoader.style.display = "block";
+        generatedImage.style.display = "none";
+        genPlaceholder.style.display = "none";
 
-            try {
-                const response = await fetch('/api/generate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        prompt: prompt,
-                        model: document.getElementById('gen-model-select').value
-                    })
-                });
+        try {
+          const response = await fetch("/api/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              prompt: prompt,
+              model: document.getElementById("gen-model-select").value,
+            }),
+          });
 
-                if (!response.ok) {
-                    const errData = await response.json();
-                    throw new Error(errData.detail || 'Generation failed');
-                }
+          if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.detail || "Generation failed");
+          }
 
-                const data = await response.json();
-                generatedImage.src = data.image;
-                generatedImage.style.display = 'block';
-                downloadBtn.style.display = 'block';
-                
-                // Download logic
-                downloadBtn.onclick = () => {
-                    const a = document.createElement('a');
-                    a.href = data.image;
-                    a.download = 'generated-image.png'; // or jpg depending on data
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                }
+          const data = await response.json();
+          generatedImage.src = data.image;
+          generatedImage.style.display = "block";
+          downloadBtn.style.display = "block";
 
-            } catch (err) {
-                console.error(err);
-                alert('Generation failed: ' + err.message);
-                genPlaceholder.style.display = 'block';
-                genPlaceholder.textContent = '生成失败，请重试';
-            } finally {
-                generateBtn.disabled = false;
-                generateBtn.textContent = "生成图片 (Generate)";
-                genLoader.style.display = 'none';
-            }
-        });
+          // Download logic
+          downloadBtn.onclick = () => {
+            const a = document.createElement("a");
+            a.href = data.image;
+            a.download = "generated-image.png"; // or jpg depending on data
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          };
+        } catch (err) {
+          console.error(err);
+          alert("Generation failed: " + err.message);
+          genPlaceholder.style.display = "block";
+          genPlaceholder.textContent = "生成失败，请重试";
+        } finally {
+          generateBtn.disabled = false;
+          generateBtn.textContent = "生成图片 (Generate)";
+          genLoader.style.display = "none";
+        }
+      });
     </script>
-</body>
+  </body>
 </html>
