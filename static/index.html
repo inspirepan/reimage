@@ -41,6 +41,20 @@
         --radius-md: 6px;
       }
 
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background-color: transparent;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background-color: var(--border);
+        border-radius: var(--radius-md);
+      }
+
       * {
         margin: 0;
         padding: 0;
@@ -55,10 +69,10 @@
         font-size: var(--font-size-base);
         -webkit-font-smoothing: antialiased;
         padding: 20px;
-        min-height: 100vh;
+        height: 100vh;
         display: flex;
         flex-direction: column;
-        overflow-x: hidden;
+        overflow: hidden;
       }
 
       h1 {
@@ -76,13 +90,14 @@
       .main-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
+        grid-template-rows: 1fr 1fr;
         gap: 16px;
         flex: 1;
+        min-height: 0;
       }
 
-      .column:nth-child(3) {
-        grid-column: 1 / -1;
-        min-height: 500px;
+      .column:nth-child(1) {
+        grid-row: 1 / -1;
       }
 
       .column {
@@ -295,7 +310,6 @@
       }
       .flex-grow textarea {
         flex: 1;
-        resize: vertical;
       }
 
       /* Details/Summary */
@@ -339,7 +353,6 @@
       details textarea {
         width: 100%;
         margin-top: 8px;
-        resize: vertical;
       }
 
       #download-btn {
@@ -527,25 +540,26 @@
           </div>
 
           <!-- Prompts -->
-          <div class="section">
+          <div class="section flex-grow">
             <label>Prompt Configuration</label>
-            <details open>
-              <summary>System Prompt</summary>
-              <textarea
-                id="system-prompt"
-                rows="4"
-                placeholder="Loading system prompt..."
-              ></textarea>
-            </details>
-            <div style="height: 8px"></div>
-            <details open>
-              <summary>User Prompt</summary>
-              <textarea
-                id="user-prompt"
-                rows="4"
-                placeholder="Loading user prompt..."
-              ></textarea>
-            </details>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex: 1; min-height: 0;">
+              <div style="display: flex; flex-direction: column; min-height: 0;">
+                <label style="font-size: var(--font-size-xs); margin-bottom: 4px;">System Prompt</label>
+                <textarea
+                  id="system-prompt"
+                  style="font-size: var(--font-size-xs); flex: 1;"
+                  placeholder="Loading system prompt..."
+                ></textarea>
+              </div>
+              <div style="display: flex; flex-direction: column; min-height: 0;">
+                <label style="font-size: var(--font-size-xs); margin-bottom: 4px;">User Prompt</label>
+                <textarea
+                  id="user-prompt"
+                  style="font-size: var(--font-size-xs); flex: 1;"
+                  placeholder="Loading user prompt..."
+                ></textarea>
+              </div>
+            </div>
           </div>
         </div>
       </div>
