@@ -252,10 +252,7 @@
   </head>
   <body>
     <h1>
-      Image Reproduce Tool
-      <span style="font-size: 0.8em; font-weight: normal; color: #64748b"
-        >| 图像复现工作台</span
-      >
+      ReImage
     </h1>
 
     <div class="main-grid">
@@ -305,8 +302,7 @@
           <div class="section">
             <label for="vlm-model-select">分析模型 (VLM)</label>
             <select id="vlm-model-select" style="width: 100%">
-              <option value="google/gemini-3-pro-preview">Gemini 3 Pro</option>
-              <option value="anthropic/claude-opus-4.5">Claude Opus 4.5</option>
+              <option value="">加载中...</option>
             </select>
           </div>
 
@@ -367,11 +363,7 @@
           <div class="section">
             <label for="gen-model-select">生图模型 (Generation Model)</label>
             <select id="gen-model-select" style="width: 100%">
-              <option value="google/gemini-3-pro-image-preview">
-                Nano Banana Pro
-              </option>
-              <option value="black-forest-labs/flux.2-flex">flux.2-flex</option>
-              <option value="google/gemini-2.5-flash-image">Nano Banana</option>
+              <option value="">加载中...</option>
             </select>
           </div>
 
@@ -417,7 +409,7 @@
 
     <script>
       document.addEventListener("DOMContentLoaded", async () => {
-        await loadPrompts();
+        await Promise.all([loadPrompts(), loadModels()]);
       });
 
       const uploadArea = document.getElementById("upload-area");
@@ -437,6 +429,8 @@
       const downloadBtn = document.getElementById("download-btn");
 
       let currentBase64Image = null;
+      let analyzeAbortController = null;
+      let generateAbortController = null;
 
       async function loadPrompts() {
         try {
@@ -448,6 +442,27 @@
           }
         } catch (e) {
           console.error("Failed to load prompts", e);
+        }
+      }
+
+      async function loadModels() {
+        const vlmSelect = document.getElementById("vlm-model-select");
+        const genSelect = document.getElementById("gen-model-select");
+        try {
+          const res = await fetch("/api/models");
+          if (res.ok) {
+            const data = await res.json();
+            vlmSelect.innerHTML = data.vlm_models
+              .map((m) => `<option value="${m.id}">${m.name}</option>`)
+              .join("");
+            genSelect.innerHTML = data.generation_models
+              .map((m) => `<option value="${m.id}">${m.name}</option>`)
+              .join("");
+          }
+        } catch (e) {
+          console.error("Failed to load models", e);
+          vlmSelect.innerHTML = '<option value="">加载失败</option>';
+          genSelect.innerHTML = '<option value="">加载失败</option>';
         }
       }
 
@@ -497,10 +512,19 @@
 
       // --- VLM Analysis Logic (Streaming) ---
       analyzeBtn.addEventListener("click", async () => {
+        // Handle cancel if already running
+        if (analyzeAbortController) {
+          analyzeAbortController.abort();
+          analyzeAbortController = null;
+          analyzeBtn.textContent = "开始分析 (Analyze)";
+          vlmStatus.textContent = "已取消";
+          return;
+        }
+
         if (!currentBase64Image) return;
 
-        analyzeBtn.disabled = true;
-        analyzeBtn.textContent = "分析中...";
+        analyzeAbortController = new AbortController();
+        analyzeBtn.textContent = "取消分析 (Cancel)";
         imagePrompt.value = ""; // Clear
         vlmStatus.textContent = "正在接收流式输出...";
 
@@ -516,6 +540,7 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
+            signal: analyzeAbortController.signal,
           });
 
           if (!response.ok) throw new Error(response.statusText);
@@ -556,22 +581,37 @@
           generateBtn.disabled = false;
           vlmStatus.textContent = "分析完成";
         } catch (err) {
-          console.error(err);
-          imagePrompt.value += "\nError calling VLM API";
-          vlmStatus.textContent = "Error";
+          if (err.name === "AbortError") {
+            vlmStatus.textContent = "已取消";
+          } else {
+            console.error(err);
+            imagePrompt.value += "\nError calling VLM API";
+            vlmStatus.textContent = "Error";
+          }
         } finally {
-          analyzeBtn.disabled = false;
+          analyzeAbortController = null;
           analyzeBtn.textContent = "开始分析 (Analyze)";
         }
       });
 
       // --- Image Generation Logic ---
       generateBtn.addEventListener("click", async () => {
+        // Handle cancel if already running
+        if (generateAbortController) {
+          generateAbortController.abort();
+          generateAbortController = null;
+          generateBtn.textContent = "生成图片 (Generate)";
+          genLoader.style.display = "none";
+          genPlaceholder.style.display = "block";
+          genPlaceholder.innerHTML = "<p>已取消</p>";
+          return;
+        }
+
         const prompt = imagePrompt.value.trim();
         if (!prompt) return;
 
-        generateBtn.disabled = true;
-        generateBtn.textContent = "生成中...";
+        generateAbortController = new AbortController();
+        generateBtn.textContent = "取消生成 (Cancel)";
         genLoader.style.display = "block";
         generatedImage.style.display = "none";
         genPlaceholder.style.display = "none";
@@ -584,6 +624,7 @@
               prompt: prompt,
               model: document.getElementById("gen-model-select").value,
             }),
+            signal: generateAbortController.signal,
           });
 
           if (!response.ok) {
@@ -606,12 +647,17 @@
             document.body.removeChild(a);
           };
         } catch (err) {
-          console.error(err);
-          alert("Generation failed: " + err.message);
-          genPlaceholder.style.display = "block";
-          genPlaceholder.textContent = "生成失败，请重试";
+          if (err.name === "AbortError") {
+            genPlaceholder.style.display = "block";
+            genPlaceholder.innerHTML = "<p>已取消</p>";
+          } else {
+            console.error(err);
+            alert("Generation failed: " + err.message);
+            genPlaceholder.style.display = "block";
+            genPlaceholder.textContent = "生成失败，请重试";
+          }
         } finally {
-          generateBtn.disabled = false;
+          generateAbortController = null;
           generateBtn.textContent = "生成图片 (Generate)";
           genLoader.style.display = "none";
         }

@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from typing import Any
 
+import yaml
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -12,11 +13,12 @@ from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionMessageParam
 from pydantic import BaseModel
 
-app = FastAPI(title="Image Reproduce Tool")
+app = FastAPI(title="ReImage")
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 STATIC_DIR = Path(__file__).parent / "static"
+MODELS_FILE = Path(__file__).parent / "models.yaml"
 
 
 def get_api_key() -> str:
@@ -33,6 +35,28 @@ def load_prompt(name: str) -> str:
     if not path.exists():
         raise HTTPException(status_code=500, detail=f"Prompt file {name}.md not found")
     return path.read_text(encoding="utf-8")
+
+
+def load_models() -> dict[str, Any]:
+    """Load model configuration from YAML file."""
+    if not MODELS_FILE.exists():
+        raise HTTPException(status_code=500, detail="models.yaml not found")
+    with open(MODELS_FILE, encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
+class ModelInfo(BaseModel):
+    """Model information."""
+
+    id: str
+    name: str
+
+
+class ModelsResponse(BaseModel):
+    """Response model for models endpoint."""
+
+    vlm_models: list[ModelInfo]
+    generation_models: list[ModelInfo]
 
 
 class PromptsResponse(BaseModel):
@@ -70,6 +94,16 @@ async def get_prompts() -> PromptsResponse:
     return PromptsResponse(
         system_prompt=load_prompt("vlm_system"),
         user_prompt=load_prompt("vlm_user"),
+    )
+
+
+@app.get("/api/models", response_model=ModelsResponse)
+async def get_models() -> ModelsResponse:
+    """Return available model configurations."""
+    config = load_models()
+    return ModelsResponse(
+        vlm_models=[ModelInfo(**m) for m in config.get("vlm_models", [])],
+        generation_models=[ModelInfo(**m) for m in config.get("generation_models", [])],
     )
 
 
