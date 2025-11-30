@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+import base64
+import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -86,6 +88,30 @@ class GenerateResponse(BaseModel):
     """Response model for generate endpoint."""
 
     image: str  # base64 encoded image
+
+
+class RandomImageResponse(BaseModel):
+    """Response model for random image endpoint."""
+
+    image: str  # base64 encoded image
+
+
+@app.get("/api/random-image", response_model=RandomImageResponse)
+async def get_random_image() -> RandomImageResponse:
+    """Get a random image from Picsum and return as base64."""
+    try:
+        async with httpx.AsyncClient() as client:
+            # Fetch from Picsum (redirects to a specific image)
+            resp = await client.get("https://picsum.photos/800/600", follow_redirects=True)
+            resp.raise_for_status()
+            
+            # Convert to base64
+            b64_img = base64.b64encode(resp.content).decode("utf-8")
+            mime_type = resp.headers.get("content-type", "image/jpeg")
+            return RandomImageResponse(image=f"data:{mime_type};base64,{b64_img}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch random image: {str(e)}")
+
 
 
 @app.get("/api/prompts", response_model=PromptsResponse)
