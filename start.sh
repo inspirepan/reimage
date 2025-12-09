@@ -14,7 +14,25 @@ if [ -z "$OPENROUTER_API_KEY" ]; then
     exit 1
 fi
 
-# Open browser after a short delay
-(sleep 1 && open http://localhost:8000) &
+# Install Python dependencies
+echo "Syncing Python dependencies..."
+uv sync
 
-uv run uvicorn main:app --host 0.0.0.0 --port 8000
+# Build frontend
+if [ -d "frontend" ] && command -v npm >/dev/null 2>&1; then
+    echo "Building frontend..."
+    cd frontend
+    if [ ! -d "node_modules" ]; then
+        npm install
+    fi
+    npm run build
+    cd ..
+else
+    echo "Skipping frontend build (frontend directory or npm not found)"
+fi
+
+# Open browser after a short delay
+(sleep 2 && open http://localhost:8000) &
+
+echo "Starting server..."
+uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
