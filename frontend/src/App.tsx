@@ -1,10 +1,9 @@
 import { useEffect, useState, useRef } from "react";
-import { Upload, Download, RefreshCw, Loader2, Image as ImageIcon } from "lucide-react";
+import { Upload, Download, RefreshCw, Loader2, Image as ImageIcon, Check, ChevronDown, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 interface ModelInfo {
@@ -21,13 +20,26 @@ interface RandomImageResponse {
   image: string;
 }
 
+interface GenerationResult {
+    id: string;
+    modelId: string;
+    modelName: string;
+    status: 'pending' | 'success' | 'error';
+    image?: string;
+    error?: string;
+}
+
 export default function App() {
   // State
   const [mllmModels, setMllmModels] = useState<ModelInfo[]>([]);
   const [genModels, setGenModels] = useState<ModelInfo[]>([]);
   const [selectedMllm, setSelectedMllm] = useState<string>("");
-  const [selectedGenModel, setSelectedGenModel] = useState<string>("");
   
+  // Multi-select state: modelId -> count (if present, it is selected)
+  const [selectedGenModels, setSelectedGenModels] = useState<Record<string, number>>({});
+  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
+  const modelDropdownRef = useRef<HTMLDivElement>(null);
+
   const [systemPrompt, setSystemPrompt] = useState<string>("");
   const [userPrompt, setUserPrompt] = useState<string>("");
   
@@ -38,14 +50,25 @@ export default function App() {
   const [mllmStatus, setMllmStatus] = useState<string>("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  // Generation Results
+  const [genResults, setGenResults] = useState<GenerationResult[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [genError, setGenError] = useState<string | null>(null);
 
   const analyzeAbortController = useRef<AbortController | null>(null);
   const generateAbortController = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const generatedImageRef = useRef<HTMLDivElement>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+        if (modelDropdownRef.current && !modelDropdownRef.current.contains(event.target as Node)) {
+            setIsModelDropdownOpen(false);
+        }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Initial Load
   useEffect(() => {
@@ -55,8 +78,13 @@ export default function App() {
         const modelsData = await modelsRes.json();
         setMllmModels(modelsData.mllm_models);
         setGenModels(modelsData.generation_models);
+        
         if (modelsData.mllm_models.length > 0) setSelectedMllm(modelsData.mllm_models[0].id);
-        if (modelsData.generation_models.length > 0) setSelectedGenModel(modelsData.generation_models[0].id);
+        
+        // Default select first gen model
+        if (modelsData.generation_models.length > 0) {
+            setSelectedGenModels({ [modelsData.generation_models[0].id]: 1 });
+        }
 
         const promptsRes = await fetch("/api/prompts");
         const promptsData: PromptsResponse = await promptsRes.json();
@@ -132,7 +160,6 @@ export default function App() {
       const decoder = new TextDecoder();
       let buffer = "";
 
-      // eslint-disable-next-line no-constant-condition
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -175,67 +202,130 @@ export default function App() {
     }
   };
 
+  const toggleModel = (modelId: string) => {
+      setSelectedGenModels(prev => {
+          const next = { ...prev };
+          if (next[modelId]) {
+              delete next[modelId];
+          } else {
+              next[modelId] = 1;
+          }
+          return next;
+      });
+  };
+
+  const updateModelCount = (modelId: string, count: number) => {
+      setSelectedGenModels(prev => ({
+          ...prev,
+          [modelId]: count
+      }));
+  };
+
   const handleGeneration = async () => {
     if (isGenerating && generateAbortController.current) {
       generateAbortController.current.abort();
       generateAbortController.current = null;
       setIsGenerating(false);
-      setGenError("Cancelled");
       return;
     }
 
     if (!generatedPrompt) return;
 
+    // Prepare tasks
+    const newTasks: GenerationResult[] = [];
+    Object.entries(selectedGenModels).forEach(([modelId, count]) => {
+        const model = genModels.find(m => m.id === modelId);
+        if (!model) return;
+        for(let i=0; i<count; i++) {
+            newTasks.push({
+                id: crypto.randomUUID(),
+                modelId,
+                modelName: model.name,
+                status: 'pending'
+            });
+        }
+    });
+
+    if (newTasks.length === 0) {
+        alert("Please select at least one model");
+        return;
+    }
+
     generateAbortController.current = new AbortController();
     setIsGenerating(true);
-    setGeneratedImage(null);
-    setGenError(null);
+    // Append new results to start of list? or Replace? User said "Compare multiple generation results".
+    // Usually replacing or prepending is better. Let's replace for a fresh run, but maybe we should allow clearing.
+    // Let's replace to keep it clean like the previous single-image version. 
+    setGenResults(newTasks); 
+
+    // Auto-scroll
+    setTimeout(() => {
+        resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+
+    const signal = generateAbortController.current.signal;
+
+    const promises = newTasks.map(async (task) => {
+        try {
+            const response = await fetch("/api/generate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    prompt: generatedPrompt,
+                    model: task.modelId,
+                }),
+                signal,
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.detail || "Generation failed");
+            }
+
+            const data = await response.json();
+            
+            setGenResults(prev => prev.map(p => 
+                p.id === task.id ? { ...p, status: 'success', image: data.image } : p
+            ));
+
+        } catch (err: any) {
+             if (err.name === "AbortError") {
+                 setGenResults(prev => prev.map(p => 
+                    p.id === task.id ? { ...p, status: 'error', error: "Cancelled" } : p
+                ));
+             } else {
+                 setGenResults(prev => prev.map(p => 
+                    p.id === task.id ? { ...p, status: 'error', error: err.message || "Failed" } : p
+                ));
+             }
+        }
+    });
 
     try {
-      const response = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: generatedPrompt,
-          model: selectedGenModel,
-        }),
-        signal: generateAbortController.current.signal,
-      });
-
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.detail || "Generation failed");
-      }
-
-      const data = await response.json();
-      setGeneratedImage(data.image);
-      
-      // Auto-scroll
-      setTimeout(() => {
-        generatedImageRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
-
-    } catch (err: any) {
-      if (err.name === "AbortError") {
-        setGenError("Cancelled");
-      } else {
-        console.error(err);
-        setGenError(err.message || "Generation failed");
-      }
+        await Promise.all(promises);
     } finally {
-      setIsGenerating(false);
-      generateAbortController.current = null;
+        setIsGenerating(false);
+        generateAbortController.current = null;
     }
   };
 
-  const handleDownload = () => {
-    if (!generatedImage) return;
+  const downloadImage = (imageUrl: string, prefix: string) => {
     const a = document.createElement("a");
-    a.href = generatedImage;
-    a.download = "generated-image.png";
+    a.href = imageUrl;
+    a.download = `${prefix}-${Date.now()}.png`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+  };
+
+  const getSelectionLabel = () => {
+      const selectedIds = Object.keys(selectedGenModels);
+      if (selectedIds.length === 0) return "Select models...";
+      if (selectedIds.length === 1) {
+          const model = genModels.find(m => m.id === selectedIds[0]);
+          return model ? model.name : "Unknown model";
+      }
+      return `${selectedIds.length} models selected`;
   };
 
   return (
@@ -356,11 +446,6 @@ export default function App() {
             <CardHeader className="flex flex-row items-center justify-between border-b bg-transparent py-4 px-6 space-y-0">
               <CardTitle className="text-sm font-bold uppercase tracking-wider">2. Prompt Generation & Image Gen</CardTitle>
               <div className="flex gap-2">
-                {generatedImage && (
-                  <Button variant="outline" size="sm" onClick={handleDownload} className="h-7 text-xs uppercase font-bold tracking-wider rounded-sm bg-transparent">
-                    <Download className="mr-2 h-3 w-3" /> Download
-                  </Button>
-                )}
                 <Button 
                     variant={isGenerating ? "destructive" : "default"} 
                     size="sm" 
@@ -368,7 +453,7 @@ export default function App() {
                     disabled={!generatedPrompt || isAnalyzing}
                     className="uppercase font-bold tracking-wider text-xs rounded-sm"
                 >
-                    {isGenerating ? "Cancel Generation" : "Generate Image"}
+                    {isGenerating ? "Cancel Generation" : "Generate Images"}
                 </Button>
               </div>
             </CardHeader>
@@ -388,48 +473,124 @@ export default function App() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label className="uppercase text-muted-foreground tracking-wide text-xs">Generation Model</Label>
-                <Select value={selectedGenModel} onValueChange={setSelectedGenModel}>
-                  <SelectTrigger className="bg-background border-input rounded-sm">
-                    <SelectValue placeholder="Select model" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {genModels.map(m => (
-                      <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Result */}
-              <div className="space-y-2 flex-1 flex flex-col min-h-0">
-                 <Label className="uppercase text-muted-foreground tracking-wide text-xs">3. Results</Label>
-                 <div className="flex-1 min-h-[300px] border-2 border-dashed rounded-sm flex flex-col items-center justify-center bg-background relative p-4">
-                 
-                    {isGenerating && (
-                        <div className="absolute inset-0 z-10 bg-background/80 flex items-center justify-center">
-                            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+              {/* Multi-Select Generation Models */}
+              <div className="space-y-2" ref={modelDropdownRef}>
+                <Label className="uppercase text-muted-foreground tracking-wide text-xs">Generation Models</Label>
+                <div className="relative">
+                    <Button
+                        variant="outline"
+                        role="combobox"
+                        className="w-full justify-between bg-background border-input rounded-sm font-normal"
+                        onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
+                    >
+                        {getSelectionLabel()}
+                        <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
+                    </Button>
+                    
+                    {isModelDropdownOpen && (
+                        <div className="absolute top-full left-0 z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
+                            <div className="p-1 max-h-60 overflow-auto">
+                                {genModels.map(model => (
+                                    <div 
+                                        key={model.id} 
+                                        className="relative flex items-center justify-between rounded-sm py-1.5 pl-2 pr-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                                        onClick={() => toggleModel(model.id)}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <div className={`
+                                                flex h-4 w-4 items-center justify-center rounded-sm border border-primary
+                                                ${selectedGenModels[model.id] ? "bg-primary text-primary-foreground" : "opacity-50"}
+                                            `}>
+                                                {selectedGenModels[model.id] && <Check className="h-3 w-3" />}
+                                            </div>
+                                            <span>{model.name}</span>
+                                        </div>
+                                        
+                                        {selectedGenModels[model.id] && (
+                                            <select 
+                                                className="h-6 w-16 text-xs bg-background border rounded px-1 ml-2 z-50"
+                                                value={selectedGenModels[model.id]}
+                                                onChange={(e) => {
+                                                    e.stopPropagation();
+                                                    updateModelCount(model.id, parseInt(e.target.value));
+                                                }}
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                {[1, 2, 3, 4].map(n => (
+                                                    <option key={n} value={n}>{n}x</option>
+                                                ))}
+                                            </select>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     )}
+                </div>
+              </div>
 
-                    {generatedImage ? (
-                        <img 
-                            ref={generatedImageRef}
-                            src={generatedImage} 
-                            alt="Generated" 
-                            className="max-w-full max-h-full object-contain rounded-sm shadow-sm" 
-                        />
+              {/* Result Area */}
+              <div className="space-y-2 flex-1 flex flex-col min-h-0">
+                 <div className="flex justify-between items-center">
+                    <Label className="uppercase text-muted-foreground tracking-wide text-xs">3. Results</Label>
+                    {genResults.length > 0 && (
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => setGenResults([])} 
+                            className="h-6 text-xs text-muted-foreground"
+                        >
+                            <Trash2 className="mr-1 h-3 w-3" /> Clear
+                        </Button>
+                    )}
+                 </div>
+                 
+                 <div 
+                    ref={resultsRef} 
+                    className="flex-1 min-h-[300px] border-2 border-dashed rounded-sm bg-background p-4 overflow-y-auto"
+                 >
+                    {genResults.length === 0 ? (
+                        <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
+                            <ImageIcon className="mb-2 h-10 w-10 opacity-20" />
+                            <p className="text-sm font-bold uppercase tracking-wide opacity-50">Waiting for generation...</p>
+                        </div>
                     ) : (
-                        <div className="text-center text-muted-foreground p-8">
-                            {genError ? (
-                                <p className="text-destructive font-bold uppercase tracking-wide text-sm">{genError}</p>
-                            ) : (
-                                <div className="flex flex-col items-center">
-                                    <ImageIcon className="mb-2 h-10 w-10 opacity-20" />
-                                    <p className="text-sm font-bold uppercase tracking-wide opacity-50">Waiting for generation...</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {genResults.map((result) => (
+                                <div key={result.id} className="group relative rounded-md border bg-card text-card-foreground shadow-sm overflow-hidden">
+                                    <div className="flex items-center justify-between border-b px-3 py-2 bg-muted/30">
+                                        <span className="text-xs font-medium truncate" title={result.modelName}>{result.modelName}</span>
+                                        {result.status === 'success' && result.image && (
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className="h-6 w-6" 
+                                                onClick={() => downloadImage(result.image!, result.modelName)}
+                                            >
+                                                <Download className="h-3 w-3" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                    <div className="aspect-square relative flex items-center justify-center bg-zinc-100 dark:bg-zinc-900">
+                                        {result.status === 'pending' && (
+                                            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                                        )}
+                                        {result.status === 'error' && (
+                                            <div className="text-xs text-destructive p-2 text-center">
+                                                {result.error}
+                                            </div>
+                                        )}
+                                        {result.status === 'success' && result.image && (
+                                            <img 
+                                                src={result.image} 
+                                                alt={result.modelName} 
+                                                className="w-full h-full object-contain"
+                                                loading="lazy"
+                                            />
+                                        )}
+                                    </div>
                                 </div>
-                            )}
+                            ))}
                         </div>
                     )}
                  </div>
